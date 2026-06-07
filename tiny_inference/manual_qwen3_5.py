@@ -27,9 +27,14 @@ def qwen3_5_text_forward(
     # cache_position作用：记录当前batch每个 token 在完整序列中的绝对位置索引，后续用于 RoPE（位置编码）和 create_causal_mask（构建正确的因果掩码）
     # 生成cache_position：从已缓存序列长度开始，依次递增，直到当前batch的最后一个token
     # 使用torch.arange生成，形状为(seq_len,)的1D张量
-    past_seen_tokens = 0 # 已缓存序列长度，目前默认为0，实现后被覆盖
+    if use_cache:
+        if past_key_values is None:
+            past_key_values = Qwen3_5DynamicCache(text_model.config)
+        past_seen_tokens = past_key_values.get_seq_length()
+    else:
+        past_seen_tokens = 0
 
-    cache_position = torch.arange( # 如果past_seen_tokens为0，则始终全量重算
+    cache_position = torch.arange(
         past_seen_tokens,
         past_seen_tokens + inputs_embeds.shape[1],
         device=inputs_embeds.device,
